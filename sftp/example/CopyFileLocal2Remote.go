@@ -46,14 +46,14 @@ func main() {
 	defer client.Close()
 
 	// create destination file
-	dstFile, err := client.Create("./file.txt")
+	dstFile, err := os.Create("./file.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer dstFile.Close()
 
-	// create source file
-	srcFile, err := os.Open("./file.txt")
+	// open source file
+	srcFile, err := client.Open("./file.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -64,6 +64,12 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("%d bytes copied\n", bytes)
+
+	// flush in-memory copy
+	err = dstFile.Sync()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func getHostKey(host string) ssh.PublicKey {
