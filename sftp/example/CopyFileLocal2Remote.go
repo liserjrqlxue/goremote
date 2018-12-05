@@ -45,10 +45,25 @@ var (
 		":22",
 		"port to remote",
 	)
+	srcPath = flag.String(
+		"src",
+		"",
+		"source file path",
+	)
+	destPath = flag.String(
+		"dest",
+		"",
+		"destination file path",
+	)
 )
 
 func main() {
 	flag.Parse()
+
+	if *srcPath == "" || *destPath == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	// get host public key
 	hostKey := getHostKey(*host)
@@ -64,42 +79,46 @@ func main() {
 
 	// connect
 	conn, err := ssh.Dial("tcp", *host+*port, config)
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkErr(err)
 	defer deferClose(conn)
 
 	// create new SFTP client
 	client, err := sftp.NewClient(conn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkErr(err)
 	defer deferClose(client)
 
-	// create destination file
-	dstFile, err := os.Create("./file.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer deferClose(dstFile)
+	if *action == "upload" {
+		// create destination file
+		dstFile, err := client.Create(*destPath)
+		checkErr(err)
+		defer deferClose(dstFile)
 
-	// open source file
-	srcFile, err := client.Open("./file.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
+		// open source file
+		srcFile, err := os.Open(*srcPath)
+		checkErr(err)
 
-	// copy source file to destination file
-	bytes, err := io.Copy(dstFile, srcFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("%d bytes copied\n", bytes)
+		// copy source file to destination file
+		bytes, err := io.Copy(dstFile, srcFile)
+		checkErr(err)
+		fmt.Printf("%d bytes copied\n", bytes)
+	} else {
+		// create destination file
+		dstFile, err := os.Create(*destPath)
+		checkErr(err)
+		defer deferClose(dstFile)
 
-	// flush in-memory copy
-	err = dstFile.Sync()
-	if err != nil {
-		log.Fatal(err)
+		// open source file
+		srcFile, err := client.Open(*srcPath)
+		checkErr(err)
+
+		// copy source file to destination file
+		bytes, err := io.Copy(dstFile, srcFile)
+		checkErr(err)
+		fmt.Printf("%d bytes copied\n", bytes)
+
+		// flush in-memory copy
+		err = dstFile.Sync()
+		checkErr(err)
 	}
 }
 
