@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"github.com/liserjrqlxue/simple-util"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"io"
@@ -79,46 +80,46 @@ func main() {
 
 	// connect
 	conn, err := ssh.Dial("tcp", *host+*port, config)
-	checkErr(err)
-	defer deferClose(conn)
+	simple_util.CheckErr(err)
+	defer simple_util.DeferClose(conn)
 
 	// create new SFTP client
 	client, err := sftp.NewClient(conn)
-	checkErr(err)
-	defer deferClose(client)
+	simple_util.CheckErr(err)
+	defer simple_util.DeferClose(client)
 
 	if *action == "upload" {
 		// create destination file
 		dstFile, err := client.Create(*destPath)
-		checkErr(err)
-		defer deferClose(dstFile)
+		simple_util.CheckErr(err)
+		defer simple_util.DeferClose(dstFile)
 
 		// open source file
 		srcFile, err := os.Open(*srcPath)
-		checkErr(err)
+		simple_util.CheckErr(err)
 
 		// copy source file to destination file
 		bytes, err := io.Copy(dstFile, srcFile)
-		checkErr(err)
+		simple_util.CheckErr(err)
 		fmt.Printf("%d bytes copied\n", bytes)
 	} else {
 		// create destination file
 		dstFile, err := os.Create(*destPath)
-		checkErr(err)
-		defer deferClose(dstFile)
+		simple_util.CheckErr(err)
+		defer simple_util.DeferClose(dstFile)
 
 		// open source file
 		srcFile, err := client.Open(*srcPath)
-		checkErr(err)
+		simple_util.CheckErr(err)
 
 		// copy source file to destination file
 		bytes, err := io.Copy(dstFile, srcFile)
-		checkErr(err)
+		simple_util.CheckErr(err)
 		fmt.Printf("%d bytes copied\n", bytes)
 
 		// flush in-memory copy
 		err = dstFile.Sync()
-		checkErr(err)
+		simple_util.CheckErr(err)
 	}
 }
 
@@ -127,11 +128,11 @@ func getHostKey(host string) ssh.PublicKey {
 	// ssh or use ssh-keyscan to get initial key
 
 	usr, err := user.Current()
-	checkErr(err)
+	simple_util.CheckErr(err)
 
 	file, err := os.Open(filepath.Join(usr.HomeDir, ".ssh", "known_hosts"))
-	checkErr(err)
-	defer deferClose(file)
+	simple_util.CheckErr(err)
+	defer simple_util.DeferClose(file)
 
 	scanner := bufio.NewScanner(file)
 	var hostKey ssh.PublicKey
@@ -155,19 +156,4 @@ func getHostKey(host string) ssh.PublicKey {
 	}
 
 	return hostKey
-}
-
-func checkErr(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-type h interface {
-	Close() error
-}
-
-func deferClose(h h) {
-	err := h.Close()
-	checkErr(err)
 }
