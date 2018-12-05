@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-func upload(conn *ssh.Client, src, dest string) {
+func Upload(conn *ssh.Client, src, dest string) {
 	// create new SFTP client
 	client, err := sftp.NewClient(conn)
 	simple_util.CheckErr(err)
@@ -29,7 +29,7 @@ func upload(conn *ssh.Client, src, dest string) {
 	fmt.Printf("%d bytes upload\n", bytes)
 }
 
-func download(conn *ssh.Client, src, dest string) {
+func Download(conn *ssh.Client, src, dest string) {
 	// create new SFTP client
 	client, err := sftp.NewClient(conn)
 	simple_util.CheckErr(err)
