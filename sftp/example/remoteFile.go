@@ -3,11 +3,9 @@ package main
 import (
 	"bufio"
 	"flag"
-	"fmt"
+	"github.com/liserjrqlxue/goremote/sftp"
 	"github.com/liserjrqlxue/simple-util"
-	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
-	"io"
 	"log"
 	"os"
 	"os/user"
@@ -83,43 +81,10 @@ func main() {
 	simple_util.CheckErr(err)
 	defer simple_util.DeferClose(conn)
 
-	// create new SFTP client
-	client, err := sftp.NewClient(conn)
-	simple_util.CheckErr(err)
-	defer simple_util.DeferClose(client)
-
 	if *action == "upload" {
-		// create destination file
-		dstFile, err := client.Create(*destPath)
-		simple_util.CheckErr(err)
-		defer simple_util.DeferClose(dstFile)
-
-		// open source file
-		srcFile, err := os.Open(*srcPath)
-		simple_util.CheckErr(err)
-
-		// copy source file to destination file
-		bytes, err := io.Copy(dstFile, srcFile)
-		simple_util.CheckErr(err)
-		fmt.Printf("%d bytes copied\n", bytes)
+		sftp.Upload(conn, *srcPath, *destPath)
 	} else {
-		// create destination file
-		dstFile, err := os.Create(*destPath)
-		simple_util.CheckErr(err)
-		defer simple_util.DeferClose(dstFile)
-
-		// open source file
-		srcFile, err := client.Open(*srcPath)
-		simple_util.CheckErr(err)
-
-		// copy source file to destination file
-		bytes, err := io.Copy(dstFile, srcFile)
-		simple_util.CheckErr(err)
-		fmt.Printf("%d bytes copied\n", bytes)
-
-		// flush in-memory copy
-		err = dstFile.Sync()
-		simple_util.CheckErr(err)
+		sftp.Download(conn, *srcPath, *destPath)
 	}
 }
 
