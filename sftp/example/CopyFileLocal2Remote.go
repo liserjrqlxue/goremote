@@ -2,55 +2,86 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 )
 
-func main() {
+var (
+	action = flag.String(
+		"action",
+		"download",
+		"action type upload/download",
+	)
+	User = flag.String(
+		"user",
+		"john",
+		"remote user",
+	)
+	host = flag.String(
+		"host",
+		"example.com",
+		"remote host",
+	)
+	password = flag.String(
+		"password",
+		"",
+		"password to user@remote",
+	)
+	key = flag.String(
+		"key",
+		"/.ssh/id_rsa",
+		"ssh key path",
+	)
+	port = flag.String(
+		"port",
+		":22",
+		"port to remote",
+	)
+)
 
-	user := ""
-	pass := ""
-	remote := ""
-	port := ":22"
+func main() {
+	flag.Parse()
 
 	// get host public key
-	hostKey := getHostKey(remote)
+	hostKey := getHostKey(*host)
 
 	config := &ssh.ClientConfig{
-		User: user,
+		User: *User,
 		Auth: []ssh.AuthMethod{
-			ssh.Password(pass),
+			ssh.Password(*password),
 		},
 		// HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		HostKeyCallback: ssh.FixedHostKey(hostKey),
 	}
 
 	// connect
-	conn, err := ssh.Dial("tcp", remote+port, config)
+	conn, err := ssh.Dial("tcp", *host+*port, config)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer conn.Close()
+	defer deferClose(conn)
 
 	// create new SFTP client
 	client, err := sftp.NewClient(conn)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer client.Close()
+	defer deferClose(client)
 
 	// create destination file
 	dstFile, err := os.Create("./file.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer dstFile.Close()
+	defer deferClose(dstFile)
 
 	// open source file
 	srcFile, err := client.Open("./file.txt")
@@ -75,11 +106,13 @@ func main() {
 func getHostKey(host string) ssh.PublicKey {
 	// parse OpenSSH known_hosts file
 	// ssh or use ssh-keyscan to get initial key
-	file, err := os.Open(filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+
+	usr, err := user.Current()
+	checkErr(err)
+
+	file, err := os.Open(filepath.Join(usr.HomeDir, ".ssh", "known_hosts"))
+	checkErr(err)
+	defer deferClose(file)
 
 	scanner := bufio.NewScanner(file)
 	var hostKey ssh.PublicKey
@@ -103,4 +136,19 @@ func getHostKey(host string) ssh.PublicKey {
 	}
 
 	return hostKey
+}
+
+func checkErr(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+type h interface {
+	Close() error
+}
+
+func deferClose(h h) {
+	err := h.Close()
+	checkErr(err)
 }
